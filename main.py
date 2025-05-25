@@ -3,11 +3,11 @@ import pyopencl as cl
 import time
 import matplotlib.pyplot as plt
 from opencl_utils import setup_opencl, load_kernel, generate_points, visualize_results
-from triangle_utils import find_right_triangles
+
 
 def main():
     # Set jumlah titik acak
-    num_points = 1000
+    num_points = 250
     points = generate_points(num_points, 0, 500, 0, 500)
 
     # Menyiapkan OpenCL (platform, device, context, queue)
@@ -30,9 +30,43 @@ def main():
     # Mulai pengukuran waktu untuk eksekusi OpenCL
     start_time = time.time()
 
+    # Alokasikan buffer untuk jumlah segitiga
+    triangle_count = np.zeros(1, dtype=np.int32)
+    triangle_count_buffer = cl.Buffer(
+    context,
+    cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR,
+    hostbuf=triangle_count
+)
+
+    max_triangles = 10000  # kapasitas maksimum segitiga (bisa disesuaikan)
+    triangle_indices = np.zeros(max_triangles * 3, dtype=np.int32)
+    triangle_indices_buffer = cl.Buffer(context, cl.mem_flags.WRITE_ONLY, triangle_indices.nbytes)
+
     # Menjalankan kernel untuk mendeteksi segitiga siku-siku
     program = cl.Program(context, kernel).build()
-    program.check_right_triangles(queue, (len(points),), None, points_buffer, np.int32(len(points)), results_buffer)
+    
+    used_points = np.zeros(num_points, dtype=np.int32)
+    used_points_buffer = cl.Buffer(context, cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR, hostbuf=used_points)
+
+    program.count_right_triangles(queue, (num_points,), None,
+    points_buffer,
+    np.int32(num_points),
+    triangle_count_buffer,
+    triangle_indices_buffer,
+    used_points_buffer)
+
+    cl.enqueue_copy(queue, triangle_count, triangle_count_buffer).wait()
+    cl.enqueue_copy(queue, triangle_indices, triangle_indices_buffer).wait()
+
+    # Ambil hanya jumlah yang valid
+    triangle_indices = triangle_indices[:triangle_count[0] * 3].reshape((-1, 3))
+
+    # Ubah ke koordinat titik nyata
+    triangles = [[points[i], points[j], points[k]] for i, j, k in triangle_indices]
+
+    print(f"Jumlah segitiga siku-siku (OpenCL): {triangle_count[0]}")
+
+
 
     # Menyalin hasil dari buffer
     cl.enqueue_copy(queue, results, results_buffer).wait()
@@ -45,11 +79,11 @@ def main():
     execution_time_opencl = end_time - start_time
     print(f"Waktu eksekusi OpenCL: {execution_time_opencl:.6f} detik")
 
-    # Menemukan segitiga siku-siku dengan memastikan eksklusivitas titik
-    triangles = find_right_triangles(points)
+    # # Menemukan segitiga siku-siku dengan memastikan eksklusivitas titik
+    # triangles = find_right_triangles(points)
 
-    # Menampilkan jumlah segitiga yang ditemukan
-    print(f"Jumlah segitiga siku-siku yang ditemukan: {len(triangles)}")
+    # # Menampilkan jumlah segitiga yang ditemukan
+    # print(f"Jumlah segitiga siku-siku yang ditemukan: {len(triangles)}")
 
     # Visualisasi hasil akhir (state akhir)
     print("Visualisasi segitiga siku-siku yang ditemukan...")
