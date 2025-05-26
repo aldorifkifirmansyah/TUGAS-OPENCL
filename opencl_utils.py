@@ -3,7 +3,7 @@ import pyopencl as cl
 
 def setup_opencl():
     # Mendapatkan platform dan device OpenCL
-    platform = cl.get_platforms()[0]
+    platform = cl.get_platforms()[1]
     device = platform.get_devices()[0]
     
     # Menampilkan informasi GPU yang digunakan

@@ -79,12 +79,6 @@ def main():
     execution_time_opencl = end_time - start_time
     print(f"Waktu eksekusi OpenCL: {execution_time_opencl:.6f} detik")
 
-    # # Menemukan segitiga siku-siku dengan memastikan eksklusivitas titik
-    # triangles = find_right_triangles(points)
-
-    # # Menampilkan jumlah segitiga yang ditemukan
-    # print(f"Jumlah segitiga siku-siku yang ditemukan: {len(triangles)}")
-
     # Visualisasi hasil akhir (state akhir)
     print("Visualisasi segitiga siku-siku yang ditemukan...")
     visualize_results(points, triangles)  # Visualisasi titik dengan segitiga
